@@ -80,9 +80,13 @@
     display:flex;align-items:center;justify-content:center;background:#000;
   }
   body.fs canvas{
+    flex:none; min-width:0;
     width:min(100vw, calc(100vh * 16 / 9));
     width:min(100svw, calc(100svh * 16 / 9));
   }
+  /* portrait fullscreen: rotate the game to fill the long axis (iOS has no orientation lock);
+     canvas width is set from JS in fullscreen — CSS only carries the rotation */
+  body.fs.rot canvas{ transform:rotate(90deg); }
   canvas{
     display:block;margin:0 auto;aspect-ratio:16/9;
     width:min(100%, calc(80vh * 16 / 9));
@@ -1267,6 +1271,8 @@ addEventListener('keydown',e=>{
 });
 function cpos(t){
   const r=cvs.getBoundingClientRect();
+  if(document.body.classList.contains('rot'))     // canvas rotated 90° cw
+    return { x:(t.clientY-r.top)*W/r.height, y:(r.right-t.clientX)*H/r.width };
   return { x:(t.clientX-r.left)*W/r.width, y:(t.clientY-r.top)*H/r.height };
 }
 function menuTap(p){
@@ -1322,18 +1328,35 @@ cvs.addEventListener('touchend',e=>{
 const fsbtn=document.getElementById('fsbtn');
 const STANDALONE = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches
                    || navigator.standalone===true;
+function updRot(){
+  const fs=document.body.classList.contains('fs');
+  const vw=window.visualViewport?visualViewport.width:innerWidth;
+  const vh=window.visualViewport?visualViewport.height:innerHeight;
+  const rot=TOUCH && fs && vh>vw;
+  document.body.classList.toggle('rot',rot);
+  if(fs) cvs.style.width = (rot ? Math.min(vh, vw*16/9) : Math.min(vw, vh*16/9))+'px';
+  else cvs.style.width='';
+}
 function setFS(on){
   document.body.classList.toggle('fs',on);
   fsbtn.textContent=on?'✕':'⛶';
+  updRot();
 }
+addEventListener('resize',updRot);
+addEventListener('orientationchange',()=>setTimeout(updRot,120));
 fsbtn.addEventListener('click', ()=>{
   ensureAudio();
   const on=!document.body.classList.contains('fs');
   if(on){
     const el=document.documentElement;
-    if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});  // Android; iOS falls through
+    if(el.requestFullscreen)
+      el.requestFullscreen().then(()=>{                 // Android: also lock landscape
+        if(screen.orientation&&screen.orientation.lock)
+          screen.orientation.lock('landscape').catch(()=>{});
+      }).catch(()=>{});
     setFS(true);
   } else {
+    if(screen.orientation&&screen.orientation.unlock){ try{screen.orientation.unlock();}catch(e){} }
     if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
     setFS(false);
   }
