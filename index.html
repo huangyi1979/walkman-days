@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <title>随身听年代 · Walkman Days</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#161330">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="随身听年代">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
 <style>
   :root{
     --ink:#161330;        /* dusk indigo page ground */
@@ -56,6 +63,26 @@
   }
   .screenwrap{position:relative;border-radius:5px;overflow:hidden;background:#000;
     border:2px solid #0c0a18;}
+  .fsbtn{
+    display:none;position:absolute;right:6px;bottom:6px;z-index:5;
+    width:34px;height:34px;border-radius:8px;border:1px solid rgba(242,194,48,.4);
+    background:rgba(12,10,24,.55);color:#f2c230;font-size:17px;line-height:1;
+    -webkit-tap-highlight-color:transparent;
+  }
+  @media (pointer:coarse){ .fsbtn{display:block} }
+  /* pseudo/true fullscreen: game pinned to the whole viewport */
+  body.fs{overflow:hidden}
+  body.fs .jcard, body.fs .keys, body.fs .liner{display:none}
+  body.fs .deck, body.fs .jcard{animation:none; transform:none}
+  body.fs .screenwrap{
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;
+    z-index:50;border:none;border-radius:0;
+    display:flex;align-items:center;justify-content:center;background:#000;
+  }
+  body.fs canvas{
+    width:min(100vw, calc(100vh * 16 / 9));
+    width:min(100svw, calc(100svh * 16 / 9));
+  }
   canvas{
     display:block;margin:0 auto;aspect-ratio:16/9;
     width:min(100%, calc(80vh * 16 / 9));
@@ -124,6 +151,7 @@
   <div class="deck">
     <div class="screenwrap">
       <canvas id="game" width="480" height="270" tabindex="0" aria-label="随身听年代 游戏画面"></canvas>
+      <button class="fsbtn" id="fsbtn" aria-label="全屏">⛶</button>
     </div>
     <div class="under">
       <span><span class="dot">●</span> REC&nbsp;&nbsp;STEREO CASSETTE PLAYER</span>
@@ -140,6 +168,7 @@
   </div>
 
   <div class="liner">
+    <p class="en">📱 手机全屏：点游戏画面右下角 ⛶。iPhone 想要真·全屏：Safari 分享菜单 → 「添加到主屏幕」，从桌面图标启动即无地址栏。</p>
     <p>八九十年代的中国，汽车还是遥远的传说，自行车驮着整座城市上下班。你在二叔的音像铺打工——骑车把翻录好的磁带送到录像厅、发廊和学校门口。客人在路边等着，靠上道才能交货；攒下的工钱，就换橱窗里那些索尼、爱华、松下：省电的、防震的、带重低音的，还有传说中1979年的那台起点之机。路上别撞翻车斗，也别让耳机里的音乐停下来——每台机器的音质、耗电、绞带手感都不一样，便宜机器听得出磁带的沙沙声。</p>
     <p class="en">Where car culture had Forza Horizon and its garage of classics, boom-era China had the Walkman. You're the delivery kid for your uncle's tape-dubbing shop: customers wait curbside — swing into the top lane to hand off their order, and your wages fund the collection. SONY, AIWA, Panasonic, Toshiba — each machine has real stats: sound quality (score multiplier), battery thrift, anti-shock (your pencil-rewind rescue window), bass boost, waterproofing. Cheap decks literally sound worse. Ride from 1984 to the year 2000, when the MP3 arrives.</p>
   </div>
@@ -1288,6 +1317,31 @@ cvs.addEventListener('touchend',e=>{
   }
   swY=null;
 },{passive:false});
+
+/* ================= fullscreen ================= */
+const fsbtn=document.getElementById('fsbtn');
+const STANDALONE = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches
+                   || navigator.standalone===true;
+function setFS(on){
+  document.body.classList.toggle('fs',on);
+  fsbtn.textContent=on?'✕':'⛶';
+}
+fsbtn.addEventListener('click', ()=>{
+  ensureAudio();
+  const on=!document.body.classList.contains('fs');
+  if(on){
+    const el=document.documentElement;
+    if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});  // Android; iOS falls through
+    setFS(true);
+  } else {
+    if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+    setFS(false);
+  }
+});
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement && !STANDALONE && document.body.classList.contains('fs')) setFS(false);
+});
+if(STANDALONE){ setFS(true); fsbtn.style.display='none'; }
 })();
 </script>
 </body>
